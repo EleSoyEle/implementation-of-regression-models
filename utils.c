@@ -18,6 +18,25 @@ double* softmax(**args){
 #include <CL/cl.h>
 #include <CL/opencl.h> 
 
+
+void show_array(double* array,int size){
+    printf("\n");
+    for(int i=0;i<size;i++){
+        printf("%f ",array[i]);
+    }
+    printf("\n");
+}
+
+void show_matrix(double** mat,int size[]){
+    for(int i=0;i<size[0];i++){
+        for(int j=0;j<size[1];j++){
+            printf("%f ",mat[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+
 double* a_zeros(int size){
     return (double*)calloc(size,sizeof(double));
 }
@@ -28,6 +47,22 @@ double** m_zeros(int s1,int s2){
     }
     return z;
 }
+
+/*
+Ejemplo:
+[[1,2,3],[2,3,4],[3,5,6]] ----> [1,2,3,2,3,4,3,5,6]
+
+*/
+double* twod2oned(double** array,int s[2]){
+    double* new_array = (double*)calloc(s[0]*s[1],sizeof(double));
+    for(int i=0;i<s[0];i++){
+        for(int j=0;j<s[1];j++){
+            new_array[i*s[1]+j]=array[i][j];
+        }
+    }
+    return new_array;
+}
+
 // Establecemos el retorno del gradiente
 double* logits(double x){
     double* out = (double*)calloc(2,sizeof(double));
@@ -38,10 +73,56 @@ double* logits(double x){
     return out;
 }
 
-//
+double** aug_pg(double* array,int sx){
+    double** pg = (double**)calloc(sx,sizeof(double*));
+    for(int i=0;i<sx;i++){
+        pg[i] = (double*)calloc(2,sizeof(double));
+        pg[i][0]=array[i];
+        pg[i][1]=array[i+sx];
+    }
+    return pg;
+}
+
+//Calcula un batch de datos completo con opencl
 //m(x1,x2,...,xn)=w1*x1+...+wn*xn+b
-//
-double** regresion(double** x,double* p, int sx,int sw,int use_logits){
+cl_int kerr = CL_SUCCESS;
+double** regresion_cl(
+    cl_program program,
+    cl_command_queue queue,
+    cl_context context,
+    double** x,double* p,
+    int sx,int sw,
+    int use_logits){
+    double* predgrads = a_zeros(sx*2);
+    double* x1d = twod2oned(x,(int[2]){sx,sw});
+    cl_mem buff_x = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*sw*sx,x1d,NULL);
+    cl_mem buff_pg = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*sx*2,predgrads,NULL);
+    cl_mem buff_p = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(sw+1),p,NULL);
+    cl_kernel kernel = clCreateKernel(program,"regresion",&kerr);
+
+    if(kerr!=CL_SUCCESS){
+        printf("Error al crear el kernel:%d \n",kerr);
+    }
+    clSetKernelArg(kernel,0,sizeof(cl_mem),(void*)&buff_x);
+    clSetKernelArg(kernel,1,sizeof(cl_mem),(void*)&buff_pg);
+    clSetKernelArg(kernel,2,sizeof(cl_mem),(void*)&buff_p);
+    clSetKernelArg(kernel,3,sizeof(cl_int),&sx);
+    clSetKernelArg(kernel,4,sizeof(cl_int),&sw);
+    clSetKernelArg(kernel,5,sizeof(cl_int),&use_logits);
+    size_t work_size = sx;
+    clEnqueueNDRangeKernel(queue,kernel,1,NULL,&work_size,NULL,0,NULL,NULL);
+    clEnqueueReadBuffer(queue,buff_pg,CL_TRUE,0,sizeof(double)*sx*2,predgrads,0,NULL,NULL);
+    
+    double** predgrads_2d = aug_pg(predgrads,sx);
+    clReleaseKernel(kernel);
+    return predgrads_2d;
+}
+
+//Calcula un batch de datos completo sin opencl
+double** regresion(
+    double** x,double* p,
+    int sx,int sw,
+    int use_logits){
     double** predgrads = m_zeros(sx,2);
     
     for(int i=0;i<sx;i++){
@@ -62,6 +143,15 @@ double** regresion(double** x,double* p, int sx,int sw,int use_logits){
     return predgrads;
 }
 
+/*
+Funcion de error sin opencl
+
+Aclaracion sobre nv:
+nv es el numero de parametros que tiene cada uno de nuestros modelos sin contar el bias
+loss es un puntero con el gradiente del error con respecto a cada parametro
+loss[0] es el error total del modelo para todo el set de datos
+
+*/
 double* MSE(double* y_true,double** y_pred,double** x,int size,int nv){
     double* loss = a_zeros(nv+2);
     for(int i=0;i<size;i++){
@@ -69,13 +159,13 @@ double* MSE(double* y_true,double** y_pred,double** x,int size,int nv){
         loss[0]+=pow(dif,2);
         double dsdw = dif*y_pred[i][1];//pred[i][1]==dlogits[i]
         for(int j=0;j<nv;j++){
-            loss[j+1] -= dsdw*x[i][j];
+            loss[j+1] += dsdw*x[i][j];
         }
-        loss[nv+1] -= dsdw;
+        loss[nv+1] += dsdw;
     }
     loss[0] = loss[0]/size;
     for(int i=0;i<nv+1;i++){
-        loss[i+1] = 2*loss[i+1]/size;
+        loss[i+1] = -2*loss[i+1]/size;
     }
     return loss;
 

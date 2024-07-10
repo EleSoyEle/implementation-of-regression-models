@@ -56,13 +56,19 @@ int main(){
         return -1;
     }
 
-
     double* p = a_zeros(nv+1);
-    double lr=0.001;
+    double lr;
 
-    int epochs=5000;
+    int epochs;
+    printf("Ingresa el numero de pasos: ");
+    scanf("%d",&epochs);
+    printf("\nIngresa el lr de tu modelo: ");
+    scanf("%lf",&lr);
+    printf("\nEntrenando...");
     for(int epoch=0;epoch<epochs;epoch++){
-        double** pred = regresion(data,p,size,nv,m);
+        double** pred = regresion_cl(program,queue,context,data,p,size,nv,m);
+        //double** pred = regresion(data,p,size,nv,m);
+
         double* loss = MSE(target,pred,data,size,nv);
         printf("\nLoss: %lf",loss[0]);
         for(int i=0;i<nv+1;i++){
