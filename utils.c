@@ -115,6 +115,9 @@ double** regresion_cl(
     
     double** predgrads_2d = aug_pg(predgrads,sx);
     clReleaseKernel(kernel);
+    clReleaseMemObject(buff_p);
+    clReleaseMemObject(buff_x);
+    clReleaseMemObject(buff_pg);
     return predgrads_2d;
 }
 
@@ -170,7 +173,6 @@ double* MSE(double* y_true,double** y_pred,double** x,int size,int nv){
     return loss;
 
 }
-//MeanSquared Error con opencl
 cl_int kerr2 = CL_SUCCESS;
 double* MSE_CL(
     cl_program program,
@@ -180,6 +182,7 @@ double* MSE_CL(
     
     double* y_pred_r = twod2oned(y_pred,(int[2]){size,2});
     double* x_r = twod2oned(x,(int[2]){size,nv});
+    //nv es el numero de parametros sin contar el bias, y como se concatena al final el error total del modelo le añadimos 2
     int s_vars = nv+2;
 
     double* loss = a_zeros(s_vars);
@@ -204,6 +207,7 @@ double* MSE_CL(
     clEnqueueReadBuffer(queue,out_buff,CL_TRUE,0,sizeof(double)*(size),loss,0,NULL,NULL);
 
     clFinish(queue);
+    //clReleaseKernel(kernel1);
 
     cl_mem grads_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(s_vars),grads,NULL);
     clSetKernelArg(kernel2,0,sizeof(cl_mem),(void*)&out_buff);
@@ -215,7 +219,7 @@ double* MSE_CL(
     size_t s2 = s_vars;
     clEnqueueNDRangeKernel(queue,kernel2,1,NULL,&s2,NULL,0,NULL,NULL);
     clEnqueueReadBuffer(queue,grads_buff,CL_TRUE,0,sizeof(double)*(s_vars),grads,0,NULL,NULL);
-
+    
     clReleaseMemObject(buff1);
     clReleaseMemObject(buff2);
     clReleaseMemObject(buff3);
@@ -223,8 +227,6 @@ double* MSE_CL(
     clReleaseMemObject(grads_buff);
     clReleaseKernel(kernel1);
     clReleaseKernel(kernel2);
-
-
     return grads;
     }
 

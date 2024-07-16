@@ -71,7 +71,7 @@ int main(){
         //double** pred = regresion(data,p,size,nv,m);
 
         double* loss = MSE_CL(program,queue,context,target,pred,data,size,nv);
-        printf("\nLoss: %lf",loss[nv]);
+        printf("\nLoss: %lf",loss[nv+1]);
         for(int i=0;i<nv+1;i++){
             p[i]=p[i]-lr*loss[i];
         }

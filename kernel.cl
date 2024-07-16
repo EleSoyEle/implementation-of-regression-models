@@ -32,41 +32,18 @@ __kernel void GradsMSE(
         for(int k=0;k<size;k++){
             ggrad+=acc_loss[k+1]*x[nv*k+i];
         }
-        grads[i]=-2*ggrad/(double)size;
+        grads[i]=-2*ggrad/size;
     }
     else if(i==nv){
         double ggrad = 0;
         for(int k=0;k<size;k++){
             ggrad+=acc_loss[k+1];
         }
-        grads[i]=2*ggrad/(double)size;
+        grads[i]=-2*ggrad/size;
     }
     else if(i==nv+1){
         grads[i]=acc_loss[0];
     }
-}
-
-__kernel void MSE(
-    __global double* y_true,
-    __global double* y_pred,
-    __global double* x,
-    __const int size,
-    __const int nv,
-    __global double* loss)
-    {
-    int gid = get_global_id(0);
-    int i = gid;
-    double dif = y_true[i]-y_pred[2*i];
-    //Calculamos el error del modelo
-    loss[0]+=pow(dif,2);
-    //Calculamos el gradiente
-    double dsdw = dif*y_pred[2*i+1]; 
-    for(int j=0;j<nv;j++){
-        loss[j+1] += dsdw*x[nv*i+j];
-    }
-    //Gradiente del bias
-    loss[nv+1] += dsdw;
-    
 }
 
 
