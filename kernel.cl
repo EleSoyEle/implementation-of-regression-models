@@ -1,3 +1,75 @@
+__kernel void PsumMSE(
+    __global double* y_true,
+    __global double* y_pred,
+    __global double* x,
+    __global double* v_sum,
+    __const int size,
+    __const int nv){
+        int k = get_global_id(0);
+        if(k>0){
+            double dif = y_true[k]-y_pred[2*k];
+            v_sum[k]=dif*y_pred[2*k+1];
+        }
+        else{
+            for(int i=0;i<size;i++){
+                double dif = y_true[i]-y_pred[2*i];
+                v_sum[0]+=pow(dif,2);
+            }
+        }
+    }
+
+
+__kernel void GradsMSE(
+    __global double* acc_loss,
+    __global double* x,
+    __global double* grads,
+    __const int size,
+    __const int nv){
+    
+    int i = get_global_id(0);
+    if(i<nv){
+        double ggrad = 0;
+        for(int k=0;k<size;k++){
+            ggrad+=acc_loss[k+1]*x[nv*k+i];
+        }
+        grads[i]=-2*ggrad/(double)size;
+    }
+    else if(i==nv){
+        double ggrad = 0;
+        for(int k=0;k<size;k++){
+            ggrad+=acc_loss[k+1];
+        }
+        grads[i]=2*ggrad/(double)size;
+    }
+    else if(i==nv+1){
+        grads[i]=acc_loss[0];
+    }
+}
+
+__kernel void MSE(
+    __global double* y_true,
+    __global double* y_pred,
+    __global double* x,
+    __const int size,
+    __const int nv,
+    __global double* loss)
+    {
+    int gid = get_global_id(0);
+    int i = gid;
+    double dif = y_true[i]-y_pred[2*i];
+    //Calculamos el error del modelo
+    loss[0]+=pow(dif,2);
+    //Calculamos el gradiente
+    double dsdw = dif*y_pred[2*i+1]; 
+    for(int j=0;j<nv;j++){
+        loss[j+1] += dsdw*x[nv*i+j];
+    }
+    //Gradiente del bias
+    loss[nv+1] += dsdw;
+    
+}
+
+
 __kernel void regresion(
     __global double* x,
     __global double* predgrads,

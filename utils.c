@@ -85,7 +85,7 @@ double** aug_pg(double* array,int sx){
 
 //Calcula un batch de datos completo con opencl
 //m(x1,x2,...,xn)=w1*x1+...+wn*xn+b
-cl_int kerr = CL_SUCCESS;
+cl_int kerr1 = CL_SUCCESS;
 double** regresion_cl(
     cl_program program,
     cl_command_queue queue,
@@ -98,10 +98,10 @@ double** regresion_cl(
     cl_mem buff_x = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*sw*sx,x1d,NULL);
     cl_mem buff_pg = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*sx*2,predgrads,NULL);
     cl_mem buff_p = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(sw+1),p,NULL);
-    cl_kernel kernel = clCreateKernel(program,"regresion",&kerr);
+    cl_kernel kernel = clCreateKernel(program,"regresion",&kerr1);
 
-    if(kerr!=CL_SUCCESS){
-        printf("Error al crear el kernel:%d \n",kerr);
+    if(kerr1!=CL_SUCCESS){
+        printf("Error al crear el kernel:%d \n",kerr1);
     }
     clSetKernelArg(kernel,0,sizeof(cl_mem),(void*)&buff_x);
     clSetKernelArg(kernel,1,sizeof(cl_mem),(void*)&buff_pg);
@@ -170,6 +170,63 @@ double* MSE(double* y_true,double** y_pred,double** x,int size,int nv){
     return loss;
 
 }
+//MeanSquared Error con opencl
+cl_int kerr2 = CL_SUCCESS;
+double* MSE_CL(
+    cl_program program,
+    cl_command_queue queue,
+    cl_context context,
+    double* y_true,double** y_pred,double** x,int size,int nv){
+    
+    double* y_pred_r = twod2oned(y_pred,(int[2]){size,2});
+    double* x_r = twod2oned(x,(int[2]){size,nv});
+    int s_vars = nv+2;
+
+    double* loss = a_zeros(s_vars);
+    double* grads = a_zeros(s_vars);
+    cl_mem buff1 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size,y_true,NULL);
+    cl_mem buff2 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size*2,y_pred_r,NULL);
+    cl_mem buff3 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size*nv,x_r,NULL);
+
+    cl_mem out_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(size+1),loss,NULL);
+
+    cl_kernel kernel1 = clCreateKernel(program,"PsumMSE",NULL);
+    cl_kernel kernel2 = clCreateKernel(program,"GradsMSE",&kerr2);
+    clSetKernelArg(kernel1,0,sizeof(cl_mem),(void*)&buff1);
+    clSetKernelArg(kernel1,1,sizeof(cl_mem),(void*)&buff2);
+    clSetKernelArg(kernel1,2,sizeof(cl_mem),(void*)&buff3);
+    clSetKernelArg(kernel1,3,sizeof(cl_mem),(void*)&out_buff);
+    clSetKernelArg(kernel1,4,sizeof(cl_int),&size);
+    clSetKernelArg(kernel1,5,sizeof(cl_int),&nv);
+
+    size_t s = size;
+    clEnqueueNDRangeKernel(queue,kernel1,1,NULL,&s,NULL,0,NULL,NULL);
+    clEnqueueReadBuffer(queue,out_buff,CL_TRUE,0,sizeof(double)*(size),loss,0,NULL,NULL);
+
+    clFinish(queue);
+
+    cl_mem grads_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(s_vars),grads,NULL);
+    clSetKernelArg(kernel2,0,sizeof(cl_mem),(void*)&out_buff);
+    clSetKernelArg(kernel2,1,sizeof(cl_mem),(void*)&buff3);
+    clSetKernelArg(kernel2,2,sizeof(cl_mem),(void*)&grads_buff);
+    clSetKernelArg(kernel2,3,sizeof(cl_int),&size);
+    clSetKernelArg(kernel2,4,sizeof(cl_int),&nv);
+
+    size_t s2 = s_vars;
+    clEnqueueNDRangeKernel(queue,kernel2,1,NULL,&s2,NULL,0,NULL,NULL);
+    clEnqueueReadBuffer(queue,grads_buff,CL_TRUE,0,sizeof(double)*(s_vars),grads,0,NULL,NULL);
+
+    clReleaseMemObject(buff1);
+    clReleaseMemObject(buff2);
+    clReleaseMemObject(buff3);
+    clReleaseMemObject(out_buff);
+    clReleaseMemObject(grads_buff);
+    clReleaseKernel(kernel1);
+    clReleaseKernel(kernel2);
+
+
+    return grads;
+    }
 
 char* readTextFile(char filename[]){
     FILE* file = fopen(filename,"r");

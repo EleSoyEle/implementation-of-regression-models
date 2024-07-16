@@ -16,7 +16,7 @@ int main(){
     scanf("%d",&nv);
     printf("Ingresa el numero de datos de entrenamiento: ");
     scanf("%d",&size);
-    printf("Con logits?[y:1,n:0]");
+    printf("Con logits?[y:1,n:0]: ");
     scanf("%d",&m);
     
     double** data = m_zeros(size,nv);
@@ -27,13 +27,14 @@ int main(){
             printf("X[%d][%d]: ",i,j);
             scanf("%lf",&data[i][j]);
         }
-        printf("Y[%d]",i);
+        printf("Y[%d]: ",i);
         scanf("%lf",&target[i]);
         printf("\n");
     }
     const char* KernelSource = readTextFile("kernel.cl");
     const cl_uint num = 1;
-    cl_device_type devt = CL_DEVICE_TYPE_CPU;
+
+    cl_device_type devt = CL_DEVICE_TYPE_ALL;
     clGetDeviceIDs(NULL,devt,0,NULL,(cl_uint*)&num);
     cl_device_id devices[1];
     clGetDeviceIDs(NULL,devt,num,devices,NULL);
@@ -69,10 +70,10 @@ int main(){
         double** pred = regresion_cl(program,queue,context,data,p,size,nv,m);
         //double** pred = regresion(data,p,size,nv,m);
 
-        double* loss = MSE(target,pred,data,size,nv);
-        printf("\nLoss: %lf",loss[0]);
+        double* loss = MSE_CL(program,queue,context,target,pred,data,size,nv);
+        printf("\nLoss: %lf",loss[nv]);
         for(int i=0;i<nv+1;i++){
-            p[i]=p[i]-lr*loss[i+1];
+            p[i]=p[i]-lr*loss[i];
         }
     }
     printf("\n Valores calculados");
