@@ -187,9 +187,9 @@ double* MSE_CL(
 
     double* loss = a_zeros(size+1);
     double* grads = a_zeros(s_vars);
-    cl_mem buff1 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size,y_true,NULL);
-    cl_mem buff2 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size*2,y_pred_r,NULL);
-    cl_mem buff3 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size*nv,x_r,NULL);
+    cl_mem buff1 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size,y_true,NULL);
+    cl_mem buff2 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size*2,y_pred_r,NULL);
+    cl_mem buff3 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size*nv,x_r,NULL);
 
     cl_mem out_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(size+1),loss,NULL);
 
@@ -222,13 +222,13 @@ double* MSE_CL(
     
     clFinish(queue); 
 
-    //clReleaseMemObject(buff1);
-    //clReleaseMemObject(buff2);
-    //clReleaseMemObject(buff3);
-    //clReleaseMemObject(out_buff);
-    //clReleaseMemObject(grads_buff);
-    //clReleaseKernel(kernel1);
-    //clReleaseKernel(kernel2);
+    clReleaseMemObject(buff1);
+    clReleaseMemObject(buff2);
+    clReleaseMemObject(buff3);
+    clReleaseMemObject(out_buff);
+    clReleaseMemObject(grads_buff);
+    clReleaseKernel(kernel1);
+    clReleaseKernel(kernel2);
     return grads;
     }
 
