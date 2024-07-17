@@ -191,7 +191,7 @@ double* MSE_CL(
     cl_mem buff2 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size*2,y_pred_r,NULL);
     cl_mem buff3 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size*nv,x_r,NULL);
 
-    cl_mem out_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR,sizeof(double)*(size+1),loss,NULL);
+    cl_mem out_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(size+1),loss,NULL);
 
     cl_kernel kernel1 = clCreateKernel(program,"PsumMSE",NULL);
     cl_kernel kernel2 = clCreateKernel(program,"GradsMSE",&kerr2);
@@ -209,7 +209,7 @@ double* MSE_CL(
     clFinish(queue);
     //clReleaseKernel(kernel1);
 
-    cl_mem grads_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR,sizeof(double)*(s_vars),grads,NULL);
+    cl_mem grads_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(s_vars),grads,NULL);
     clSetKernelArg(kernel2,0,sizeof(cl_mem),(void*)&out_buff);
     clSetKernelArg(kernel2,1,sizeof(cl_mem),(void*)&buff3);
     clSetKernelArg(kernel2,2,sizeof(cl_mem),(void*)&grads_buff);
