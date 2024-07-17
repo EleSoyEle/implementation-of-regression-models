@@ -229,6 +229,9 @@ double* MSE_CL(
     clReleaseMemObject(grads_buff);
     clReleaseKernel(kernel1);
     clReleaseKernel(kernel2);
+    free(y_pred_r);
+    free(loss);
+    free(x_r);
     return grads;
     }
 
