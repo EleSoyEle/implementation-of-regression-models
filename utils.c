@@ -185,13 +185,13 @@ double* MSE_CL(
     //nv es el numero de parametros sin contar el bias, y como se concatena al final el error total del modelo le añadimos 2
     int s_vars = nv+2;
 
-    double* loss = a_zeros(s_vars);
+    double* loss = a_zeros(size+1);
     double* grads = a_zeros(s_vars);
-    cl_mem buff1 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size,y_true,NULL);
-    cl_mem buff2 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size*2,y_pred_r,NULL);
-    cl_mem buff3 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_COPY_HOST_PTR,sizeof(double)*size*nv,x_r,NULL);
+    cl_mem buff1 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size,y_true,NULL);
+    cl_mem buff2 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size*2,y_pred_r,NULL);
+    cl_mem buff3 = clCreateBuffer(context,CL_MEM_READ_ONLY|CL_MEM_USE_HOST_PTR,sizeof(double)*size*nv,x_r,NULL);
 
-    cl_mem out_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(size+1),loss,NULL);
+    cl_mem out_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR,sizeof(double)*(size+1),loss,NULL);
 
     cl_kernel kernel1 = clCreateKernel(program,"PsumMSE",NULL);
     cl_kernel kernel2 = clCreateKernel(program,"GradsMSE",&kerr2);
@@ -204,12 +204,12 @@ double* MSE_CL(
 
     size_t s = size;
     clEnqueueNDRangeKernel(queue,kernel1,1,NULL,&s,NULL,0,NULL,NULL);
-    clEnqueueReadBuffer(queue,out_buff,CL_TRUE,0,sizeof(double)*(size),loss,0,NULL,NULL);
+    clEnqueueReadBuffer(queue,out_buff,CL_TRUE,0,sizeof(double)*(size+1),loss,0,NULL,NULL);
 
     clFinish(queue);
     //clReleaseKernel(kernel1);
 
-    cl_mem grads_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(s_vars),grads,NULL);
+    cl_mem grads_buff = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_USE_HOST_PTR,sizeof(double)*(s_vars),grads,NULL);
     clSetKernelArg(kernel2,0,sizeof(cl_mem),(void*)&out_buff);
     clSetKernelArg(kernel2,1,sizeof(cl_mem),(void*)&buff3);
     clSetKernelArg(kernel2,2,sizeof(cl_mem),(void*)&grads_buff);
@@ -220,13 +220,15 @@ double* MSE_CL(
     clEnqueueNDRangeKernel(queue,kernel2,1,NULL,&s2,NULL,0,NULL,NULL);
     clEnqueueReadBuffer(queue,grads_buff,CL_TRUE,0,sizeof(double)*(s_vars),grads,0,NULL,NULL);
     
-    clReleaseMemObject(buff1);
-    clReleaseMemObject(buff2);
-    clReleaseMemObject(buff3);
-    clReleaseMemObject(out_buff);
-    clReleaseMemObject(grads_buff);
-    clReleaseKernel(kernel1);
-    clReleaseKernel(kernel2);
+    clFinish(queue); 
+
+    //clReleaseMemObject(buff1);
+    //clReleaseMemObject(buff2);
+    //clReleaseMemObject(buff3);
+    //clReleaseMemObject(out_buff);
+    //clReleaseMemObject(grads_buff);
+    //clReleaseKernel(kernel1);
+    //clReleaseKernel(kernel2);
     return grads;
     }
 
