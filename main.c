@@ -75,6 +75,8 @@ int main(){
         for(int i=0;i<nv+1;i++){
             p[i]=p[i]-lr*loss[i];
         }
+        free(loss);
+        free(pred);
     }
     printf("\n Valores calculados");
     for(int i=0;i<nv+1;i++){
