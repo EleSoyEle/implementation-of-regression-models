@@ -1,3 +1,4 @@
+//Calculamos los primeros gradientes para cada dato
 __kernel void PsumMSE(
     __global double* y_true,
     __global double* y_pred,
@@ -11,6 +12,7 @@ __kernel void PsumMSE(
             v_sum[k]=dif*y_pred[2*k+1];
         }
         else{
+            //Tecnicamente esto es designar a un nucleo especifico hacer una unica tarea jajaj
             for(int i=0;i<size;i++){
                 double dif = y_true[i]-y_pred[2*i];
                 v_sum[0]+=pow(dif,2);
@@ -18,7 +20,7 @@ __kernel void PsumMSE(
         }
     }
 
-
+//Calculamos todos los gradientes
 __kernel void GradsMSE(
     __global double* acc_loss,
     __global double* x,
@@ -53,7 +55,7 @@ __kernel void regresion(
     __global double* p,
     __const int sx,
     __const int sw,
-    __const int use_logits){
+    __const int use_sigmoid){
     int gid = get_global_id(0);
     int i = gid;
     for(int j=0;j<sw;j++){
@@ -61,11 +63,11 @@ __kernel void regresion(
         
     }
     predgrads[i]+=p[sw];
-    if(use_logits==1){
+    if(use_sigmoid==1){
         double t_exp = exp(-predgrads[i]);
         double s = 1/(1+t_exp);
         predgrads[i]=s; //Prediccion con logits
-        predgrads[i+sx]=t_exp*pow(s,2); //Derivada de logits
+        predgrads[i+sx]=s*(1-s); //Derivada de logits
     }
     else{
         predgrads[i+sx]=1;

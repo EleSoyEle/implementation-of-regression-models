@@ -32,9 +32,9 @@ int main(){
         printf("\n");
     }
     const char* KernelSource = readTextFile("kernel.cl");
-    const cl_uint num = 1;
+    const cl_uint num = 1;  
 
-    cl_device_type devt = CL_DEVICE_TYPE_ALL;
+    cl_device_type devt = CL_DEVICE_TYPE_CPU;
     clGetDeviceIDs(NULL,devt,0,NULL,(cl_uint*)&num);
     cl_device_id devices[1];
     clGetDeviceIDs(NULL,devt,num,devices,NULL);

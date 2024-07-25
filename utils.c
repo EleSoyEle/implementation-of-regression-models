@@ -69,7 +69,7 @@ double* logits(double x){
     double t_exp = exp(-x);
     double s = 1/(1+t_exp);
     out[0]=s; //Logit
-    out[1]=t_exp*pow(s,2); //dlogit
+    out[1]=s*(1-s); //dlogit
     return out;
 }
 
@@ -94,7 +94,8 @@ double** regresion_cl(
     int sx,int sw,
     int use_logits){
     double* predgrads = a_zeros(sx*2);
-    double* x1d = twod2oned(x,(int[2]){sx,sw});
+    int context_data[] = {sx,sw};
+    double* x1d = twod2oned(x,context_data);
     cl_mem buff_x = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*sw*sx,x1d,NULL);
     cl_mem buff_pg = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*sx*2,predgrads,NULL);
     cl_mem buff_p = clCreateBuffer(context,CL_MEM_READ_WRITE|CL_MEM_COPY_HOST_PTR,sizeof(double)*(sw+1),p,NULL);
@@ -118,7 +119,10 @@ double** regresion_cl(
     clReleaseMemObject(buff_p);
     clReleaseMemObject(buff_x);
     clReleaseMemObject(buff_pg);
+    free(predgrads);
+    free(x1d);
     return predgrads_2d;
+    free(predgrads_2d);
 }
 
 //Calcula un batch de datos completo sin opencl
@@ -179,9 +183,10 @@ double* MSE_CL(
     cl_command_queue queue,
     cl_context context,
     double* y_true,double** y_pred,double** x,int size,int nv){
-    
-    double* y_pred_r = twod2oned(y_pred,(int[2]){size,2});
-    double* x_r = twod2oned(x,(int[2]){size,nv});
+    int context_data1[] = {size,2};
+    double* y_pred_r = twod2oned(y_pred,context_data1);
+    int context_data2[] = {size,nv};
+    double* x_r = twod2oned(x,context_data2);
     //nv es el numero de parametros sin contar el bias, y como se concatena al final el error total del modelo le añadimos 2
     int s_vars = nv+2;
 
@@ -233,6 +238,7 @@ double* MSE_CL(
     free(loss);
     free(x_r);
     return grads;
+    free(grads);
     }
 
 char* readTextFile(char filename[]){
