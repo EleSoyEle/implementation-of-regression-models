@@ -3,7 +3,7 @@
 #include <cstdlib>  
 
 using namespace std;
-//Codigo sin terminar
+//Implementacion del optimizador Adam
 class Adam {
     public:
         double lr;

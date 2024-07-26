@@ -14,6 +14,7 @@ extern "C"{
 
 using namespace std;
 
+
 std::string readKernelFile(const std::string& filename) {
 
     std::ifstream file(filename);
@@ -82,22 +83,26 @@ int main(){
 
     Adam optimizer;
     optimizer.lr=lr;
+    optimizer.beta1=0.9;
 
     optimizer.build_optimizer(nv+1);
+    int ended=0;
+    while(ended==0){
+        for(int epoch=0;epoch<epochs;epoch++){
+            double** pred = regresion_cl(program,queue,context,data,p,size,nv,m);
+            //double** pred = regresion(data,p,size,nv,m);
 
-
-    for(int epoch=0;epoch<epochs;epoch++){
-        double** pred = regresion_cl(program,queue,context,data,p,size,nv,m);
-        //double** pred = regresion(data,p,size,nv,m);
-
-        double* loss = MSE_CL(program,queue,context,target,pred,data,size,nv);
-        printf("\nLoss: %lf",loss[nv+1]);
-        optimizer.apply_gradients(p,loss,nv+1);
-        free(loss);
-        free(pred);
-    }
-    printf("\n Valores calculados");
-    for(int i=0;i<nv+1;i++){
-        printf("\n%lf",p[i]);
+            double* loss = MSE_CL(program,queue,context,target,pred,data,size,nv);
+            printf("\nLoss: %lf",loss[nv+1]);
+            optimizer.apply_gradients(p,loss,nv+1);
+            free(loss);
+            free(pred);
+        }
+        printf("\n Valores calculados");
+        for(int i=0;i<nv+1;i++){
+            printf("\n%lf",p[i]);
+        }
+        printf("¿Estas satisfecho con este entrenamiento?[y:1,n:0]");
+        scanf("%d",&ended);
     }
 }

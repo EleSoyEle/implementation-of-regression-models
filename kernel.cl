@@ -17,6 +17,7 @@ __kernel void PsumMSE(
                 double dif = y_true[i]-y_pred[2*i];
                 v_sum[0]+=pow(dif,2);
             }
+            v_sum[0]=v_sum[0]/size;
         }
     }
 
