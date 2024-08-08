@@ -48,6 +48,23 @@ double** m_zeros(int s1,int s2){
     return z;
 }
 
+//Funcion sacada de stack overflow
+double func_Uniform(double left, double right) {
+    double randomNumber = sin(rand() * rand());
+    return left + (right - left) * fabs(randomNumber);
+}
+
+double* a_uniform(int size){
+    double* a = a_zeros(size);
+    for(int i=0;i<size;i++){
+        a[i]=func_Uniform(0.0,1.0);
+    }
+    return a;
+}
+
+
+
+
 /*
 Ejemplo:
 [[1,2,3],[2,3,4],[3,5,6]] ----> [1,2,3,2,3,4,3,5,6]

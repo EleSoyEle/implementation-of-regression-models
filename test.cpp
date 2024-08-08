@@ -71,7 +71,7 @@ int main(){
         return -1;
     }
 
-    double* p = a_zeros(nv+1);
+    double* p = a_uniform(nv+1);
     double lr;
 
     int epochs;
@@ -102,7 +102,7 @@ int main(){
         for(int i=0;i<nv+1;i++){
             printf("\n%lf",p[i]);
         }
-        printf("¿Estas satisfecho con este entrenamiento?[y:1,n:0]");
+        printf("¿Estas satisfecho con este entrenamiento?[y:1,n:0] ");
         scanf("%d",&ended);
     }
 }
